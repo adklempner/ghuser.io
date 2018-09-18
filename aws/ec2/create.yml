@@ -76,6 +76,12 @@
     - name: sentry_dns
       prompt: Sentry DNS (e.g. https://0123456789abcdef0123456789abcdef:0123456789abcdef0123456789abcdef@sentry.io/1234567)
       private: yes
+    - name: aws_access_key_id
+      prompt: AWS access key ID (e.g. ABCDEFGHIJ0123456789)
+      private: yes
+    - name: aws_secret_access_key
+      prompt: AWS secret access key (e.g. 1234567890AbCdEfGhIjKlMnOpQrStUvWxYz0123)
+      private: yes
   tasks:
     - name: Download Node.js setup script
       get_url:
@@ -89,6 +95,7 @@
       apt:
         name: nodejs
       become: True
+
     - name: Setup Git user name
       git_config:
         name: user.name
@@ -99,6 +106,7 @@
         name: user.email
         scope: global
         value: "{{ git_email }}"
+
     - name: Setup .bashrc
       lineinfile:
         path: /home/ubuntu/.bashrc
@@ -113,6 +121,7 @@
           val: "{{ github_username }}"
         - key: GITHUB_PASSWORD
           val: "{{ github_password }}"
+
     - name: git clone ghuser.io's DB
       git:
         repo: "https://{{ github_username }}:{{ github_password }}@github.com/ghuser-io/db.git"
@@ -125,6 +134,7 @@
       command: git reset --hard HEAD
       args:
         chdir: /home/ubuntu/db/
+
     - name: Install pip
       apt:
         name: python3-pip
@@ -143,6 +153,7 @@
       template:
         src: raven-bash.conf.j2
         dest: /etc/raven-bash.conf
+        mode: 0400
       become: True
     - name: Create ~/.aws/
       file:
@@ -161,6 +172,24 @@
       apt:
         name: jq
       become: True
+
+    - name: Install s3fs
+      apt:
+        name: s3fs
+      become: True
+    - name: Configure s3fs
+      template:
+        src: passwd-s3fs.j2
+        dest: /home/ubuntu/.passwd-s3fs
+        mode: 0400
+    - name: Create ~/s3/
+      file:
+        path: /home/ubuntu/s3
+        state: directory
+        mode: 0700
+    - name: Run s3fs
+      command: s3fs ghuser /home/ubuntu/s3 -ouse_cache=/tmp/s3
+
     - name: Hint
       vars:
         msg: |
